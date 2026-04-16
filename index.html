@@ -1,176 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voucher Pro System</title>
+<title>Voucher List</title>
 
-<!-- QR -->
+<!-- QR Generator -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-<!-- EXPORT IMAGE -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 body {
-    font-family: Arial, sans-serif;
+  font-family: Arial;
+  background: #f5f5f5;
 }
 
-/* CONTROLS */
-.controls {
-    margin: 10px;
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  padding: 10px;
 }
 
-textarea {
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-/* GRID */
-#hotspot-print-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-}
-
-/* VOUCHER */
 .voucher {
-    border: 1px solid #000;
-    text-align: center;
-    padding: 6px;
-    height: 150px;
-    position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 2px dashed #000;
+  padding: 10px;
+  background: #fff;
 }
 
-/* REF NUMBER */
-.ref {
-    position: absolute;
-    top: 3px;
-    right: 5px;
-    font-size: 9px;
-    color: #555;
+.left {
+  width: 60%;
 }
 
-/* CODE */
 .code {
-    font-size: 22px;
-    font-weight: bold;
-    margin-top: 10px;
+  font-size: 18px;
+  font-weight: bold;
 }
 
-/* PRICE */
-.price {
-    font-size: 14px;
-    margin: 3px 0;
+.right {
+  text-align: center;
+  position: relative;
 }
 
-/* QR */
 .qr {
-    display: flex;
-    justify-content: center;
+  width: 80px;
+  height: 80px;
 }
 
-/* PRINT CLEAN */
+.price {
+  margin-top: 5px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  background: green;
+  padding: 4px 8px;
+  border-radius: 5px;
+}
+
+/* Print style */
 @media print {
-    .controls {
-        display: none;
-    }
+  body {
+    background: #fff;
+  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="controls">
-    <textarea id="inputCodes" rows="6" placeholder="Paste ANY voucher text here... (messy text allowed)"></textarea>
-
-    <button onclick="loadCodes()">Generate Vouchers</button>
-    <button onclick="saveAsImage()">Save as Image</button>
-    <button onclick="window.print()">Print</button>
-</div>
-
-<div id="hotspot-print-grid"></div>
+<div class="container" id="voucherContainer"></div>
 
 <script>
-// 🔥 YOUR SERVER
-const serverURL = "http://10.1.0.100";
+// Voucher data
+const vouchers = [
+"43152523","67867248","28398538","93330566","32961604",
+"59694569","66012907","58657004","45925767","54381005",
+"38413438","00339576","12885027","25670711","40195290",
+"49575436","48500044","90148139","01743011","75124242",
+"35269803","02731383","54957191","64379879","22159193",
+"08512156","93494537","53477069","96527186","97161196",
+"95733597","14583234","62508778","74765624","63650643",
+"46890335","51322946","87069002","80773414","98973578",
+"81288184","71176638","57369922","83566897","69344986",
+"29263566","55518947","46492251","56533980","24661426"
+];
 
-// 🔥 AUTO DETECT PRICE + TIME
-function getVoucherDetails(code) {
-    const len = code.length;
+const container = document.getElementById("voucherContainer");
 
-    if (len === 6) {
-        return { price: "P10.00", time: "5hrs" };
-    } else if (len === 7) {
-        return { price: "P15.00", time: "12hrs" };
-    } else if (len === 8) {
-        return { price: "P20.00", time: "24hrs" };
-    } else {
-        return { price: "INVALID", time: "" };
-    }
-}
+vouchers.forEach(code => {
+  const div = document.createElement("div");
+  div.className = "voucher";
 
-// 🔥 GENERATE BATCH REFERENCE
-function generateRef() {
-    const now = new Date();
-    return "REF-" +
-        now.getFullYear().toString().slice(-2) +
-        (now.getMonth()+1).toString().padStart(2,"0") +
-        now.getDate().toString().padStart(2,"0") +
-        "-" +
-        Math.floor(Math.random()*1000);
-}
+  div.innerHTML = `
+    <div class="left">
+      <div class="code">${code}</div>
+      <div>Valid: 1 Day</div>
+      <div>Usage: 1</div>
+      <div>2026-04-16 → 2027-04-16</div>
+    </div>
+    <div class="right">
+      <div id="qr-${code}"></div>
+      <div class="price">PHP 20</div>
+    </div>
+  `;
 
-// 🔥 LOAD + CLEAN + GENERATE
-function loadCodes() {
-    const raw = document.getElementById("inputCodes").value;
+  container.appendChild(div);
 
-    // ✅ EXTRACT ONLY VALID CODES (6–8 digits)
-    const codes = raw.match(/\b\d{6,8}\b/g) || [];
-
-    const ref = generateRef();
-
-    const container = document.getElementById("hotspot-print-grid");
-    container.innerHTML = "";
-
-    codes.forEach((code, i) => {
-        const details = getVoucherDetails(code);
-
-        const div = document.createElement("div");
-        div.className = "voucher";
-
-        div.innerHTML = `
-            <div class="ref">${ref}</div>
-            <div class="code">${code}</div>
-            <div class="price">${details.price} ${details.time ? "for " + details.time : ""}</div>
-            <div class="qr" id="qr${i}"></div>
-        `;
-
-        container.appendChild(div);
-
-        // QR with tracking
-        new QRCode(document.getElementById("qr"+i), {
-            text: serverURL + "?code=" + code + "&ref=" + ref,
-            width: 90,
-            height: 90
-        });
-    });
-
-    // 🔥 FEEDBACK
-    alert("✅ Loaded " + codes.length + " valid vouchers");
-}
-
-// 🔥 SAVE AS IMAGE
-function saveAsImage() {
-    const element = document.getElementById("hotspot-print-grid");
-
-    html2canvas(element, {
-        scale: 2
-    }).then(canvas => {
-        const link = document.createElement("a");
-        link.download = "vouchers.png";
-        link.href = canvas.toDataURL();
-        link.click();
-    });
-}
+  // Generate QR
+  new QRCode(document.getElementById(`qr-${code}`), {
+    text: code,
+    width: 80,
+    height: 80
+  });
+});
 </script>
 
 </body>
