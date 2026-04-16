@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Voucher Pro System</title>
+
+<!-- QR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- EXPORT IMAGE -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+}
+
+/* CONTROLS */
+.controls {
+    margin: 10px;
+}
+
+textarea {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* GRID */
+#hotspot-print-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+/* VOUCHER */
+.voucher {
+    border: 1px solid #000;
+    text-align: center;
+    padding: 6px;
+    height: 150px;
+    position: relative;
+}
+
+/* REF NUMBER */
+.ref {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    font-size: 9px;
+    color: #555;
+}
+
+/* CODE */
+.code {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* PRICE */
+.price {
+    font-size: 14px;
+    margin: 3px 0;
+}
+
+/* QR */
+.qr {
+    display: flex;
+    justify-content: center;
+}
+
+/* PRINT CLEAN */
+@media print {
+    .controls {
+        display: none;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="controls">
+    <textarea id="inputCodes" rows="6" placeholder="Paste ANY voucher text here... (messy text allowed)"></textarea>
+
+    <button onclick="loadCodes()">Generate Vouchers</button>
+    <button onclick="saveAsImage()">Save as Image</button>
+    <button onclick="window.print()">Print</button>
+</div>
+
+<div id="hotspot-print-grid"></div>
+
+<script>
+// 🔥 YOUR SERVER
+const serverURL = "http://10.1.0.100";
+
+// 🔥 AUTO DETECT PRICE + TIME
+function getVoucherDetails(code) {
+    const len = code.length;
+
+    if (len === 6) {
+        return { price: "P10.00", time: "5hrs" };
+    } else if (len === 7) {
+        return { price: "P15.00", time: "12hrs" };
+    } else if (len === 8) {
+        return { price: "P20.00", time: "24hrs" };
+    } else {
+        return { price: "INVALID", time: "" };
+    }
+}
+
+// 🔥 GENERATE BATCH REFERENCE
+function generateRef() {
+    const now = new Date();
+    return "REF-" +
+        now.getFullYear().toString().slice(-2) +
+        (now.getMonth()+1).toString().padStart(2,"0") +
+        now.getDate().toString().padStart(2,"0") +
+        "-" +
+        Math.floor(Math.random()*1000);
+}
+
+// 🔥 LOAD + CLEAN + GENERATE
+function loadCodes() {
+    const raw = document.getElementById("inputCodes").value;
+
+    // ✅ EXTRACT ONLY VALID CODES (6–8 digits)
+    const codes = raw.match(/\b\d{6,8}\b/g) || [];
+
+    const ref = generateRef();
+
+    const container = document.getElementById("hotspot-print-grid");
+    container.innerHTML = "";
+
+    codes.forEach((code, i) => {
+        const details = getVoucherDetails(code);
+
+        const div = document.createElement("div");
+        div.className = "voucher";
+
+        div.innerHTML = `
+            <div class="ref">${ref}</div>
+            <div class="code">${code}</div>
+            <div class="price">${details.price} ${details.time ? "for " + details.time : ""}</div>
+            <div class="qr" id="qr${i}"></div>
+        `;
+
+        container.appendChild(div);
+
+        // QR with tracking
+        new QRCode(document.getElementById("qr"+i), {
+            text: serverURL + "?code=" + code + "&ref=" + ref,
+            width: 90,
+            height: 90
+        });
+    });
+
+    // 🔥 FEEDBACK
+    alert("✅ Loaded " + codes.length + " valid vouchers");
+}
+
+// 🔥 SAVE AS IMAGE
+function saveAsImage() {
+    const element = document.getElementById("hotspot-print-grid");
+
+    html2canvas(element, {
+        scale: 2
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "vouchers.png";
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+}
+</script>
+
+</body>
+</html>
