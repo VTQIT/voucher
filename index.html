@@ -29,15 +29,20 @@ textarea {
 #hotspot-print-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
+    gap: 4px; /* 🔥 spacing between vouchers */
+    padding: 5px;
 }
 
 /* VOUCHER */
 .voucher {
     border: 1px solid #000;
     text-align: center;
-    padding: 6px;
+    padding: 6px 4px;
     height: 150px;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 🔥 evenly spaced content */
 }
 
 /* REF NUMBER */
@@ -51,35 +56,40 @@ textarea {
 
 /* CODE */
 .code {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
-    margin-top: 10px;
+    margin-top: 8px;
+    margin-bottom: 2px;
 }
 
-/* 🔥 UPDATED PRICE (HIGHLIGHTED) */
+/* 🔥 PRICE (HIGHLIGHTED + SPACED) */
 .price {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: bold;
-    margin: 4px 0;
+    margin: 4px auto;
     display: inline-block;
     padding: 2px 8px;
     border: 2px solid #000;
     border-radius: 6px;
     background: #000;
     color: #fff;
-    letter-spacing: 1px;
 }
 
 /* QR */
 .qr {
     display: flex;
     justify-content: center;
+    margin-top: 4px;
 }
 
 /* PRINT CLEAN */
 @media print {
     .controls {
         display: none;
+    }
+
+    body {
+        margin: 0;
     }
 }
 </style>
@@ -147,8 +157,12 @@ function loadCodes() {
 
         div.innerHTML = `
             <div class="ref">${ref}</div>
-            <div class="code">${code}</div>
-            <div class="price">${details.price} ${details.time ? "for " + details.time : ""}</div>
+
+            <div>
+                <div class="code">${code}</div>
+                <div class="price">${details.price} ${details.time ? "for " + details.time : ""}</div>
+            </div>
+
             <div class="qr" id="qr${i}"></div>
         `;
 
@@ -157,8 +171,8 @@ function loadCodes() {
         // QR with tracking
         new QRCode(document.getElementById("qr"+i), {
             text: serverURL + "?code=" + code + "&ref=" + ref,
-            width: 90,
-            height: 90
+            width: 80,
+            height: 80
         });
     });
 
