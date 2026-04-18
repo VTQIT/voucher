@@ -5,10 +5,7 @@
 <meta charset="UTF-8">
 <title>Voucher Pro System</title>
 
-<!-- QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-<!-- EXPORT IMAGE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
@@ -16,7 +13,6 @@ body {
     font-family: Arial, sans-serif;
 }
 
-/* CONTROLS */
 .controls {
     margin: 10px;
 }
@@ -26,52 +22,61 @@ textarea {
     margin-bottom: 10px;
 }
 
-/* SCREEN VIEW (preview only) */
+/* GRID */
 #hotspot-print-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
+    gap: 10px;
     padding: 10px;
 }
 
 /* VOUCHER */
 .voucher {
-    border: 1px solid #000;
     text-align: center;
-    padding: 6px 4px;
-    height: 160px;
-    position: relative;
+    padding: 10px 5px;
+    height: 200px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
-/* REF */
-.ref {
-    position: absolute;
-    top: 3px;
-    right: 5px;
-    font-size: 9px;
-    color: #555;
+/* LOGO */
+.logo img {
+    width: 60px;
 }
 
 /* CODE */
 .code {
-    font-size: 18px;
+    font-size: 34px;
     font-weight: bold;
-    margin-top: 8px;
+    color: #555;
 }
 
-/* PRICE */
+/* PRICE (TEXT ONLY, NO BOX) */
 .price {
-    font-size: 13px;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+/* 🎨 DIFFERENT COLOR PER PRICE */
+.p10 { color: #6a1bb9; }  /* purple */
+.p15 { color: #ff8800; }  /* orange */
+.p20 { color: #2f3e9e; }  /* blue */
+.p50 { color: #28a745; }  /* green */
+.invalid { color: #999; }
+
+/* TIME */
+.time {
+    font-size: 16px;
     font-weight: bold;
-    margin: 4px auto;
-    padding: 2px 6px;
-    border: 2px solid #000;
-    border-radius: 6px;
-    background: #000;
-    color: #fff;
+}
+
+/* SCAN */
+.scan {
+    font-size: 16px;
+    font-weight: bold;
+    color: #556b2f;
 }
 
 /* QR */
@@ -80,14 +85,17 @@ textarea {
     justify-content: center;
 }
 
-/* 🔥 PRINT PERFECT 50 (5x10) */
+/* LINE */
+.line {
+    border-bottom: 2px solid #000;
+    margin-top: 4px;
+}
+
+/* PRINT */
 @media print {
-    body {
-        margin: 0;
-    }
+    body { margin: 0; }
 
     #hotspot-print-grid {
-        display: grid;
         grid-template-columns: repeat(5, 1fr);
         grid-template-rows: repeat(10, 1fr);
         width: 8.5in;
@@ -96,31 +104,22 @@ textarea {
     }
 
     .voucher {
-        width: 100%;
         height: 100%;
-        border: 1px solid #000;
-        padding: 4px;
+        padding: 6px 3px;
         box-sizing: border-box;
-        font-size: 10px;
     }
 
-    .code {
-        font-size: 14px;
-    }
-
-    .price {
-        font-size: 10px;
-        padding: 2px 4px;
-    }
+    .code { font-size: 24px; }
+    .price { font-size: 18px; }
+    .time { font-size: 12px; }
+    .scan { font-size: 12px; }
 
     .qr canvas {
-        width: 50px !important;
-        height: 50px !important;
+        width: 60px !important;
+        height: 60px !important;
     }
 
-    .controls {
-        display: none;
-    }
+    .controls { display: none; }
 }
 </style>
 </head>
@@ -128,7 +127,7 @@ textarea {
 <body>
 
 <div class="controls">
-    <textarea id="inputCodes" rows="6" placeholder="Paste ANY voucher text here..."></textarea>
+    <textarea id="inputCodes" rows="6" placeholder="Paste voucher text here..."></textarea>
 
     <button onclick="loadCodes()">Generate Vouchers</button>
     <button onclick="saveAsImage()">Save as Image</button>
@@ -138,80 +137,71 @@ textarea {
 <div id="hotspot-print-grid"></div>
 
 <script>
-// SERVER
 const serverURL = "http://10.1.0.100";
 
-// 🔥 AUTO PRICE BY DIGIT LENGTH
+// PRICE LOGIC
 function getVoucherDetails(code) {
     const len = code.length;
 
     const pricingTable = {
-        6: { price: "P10.00", time: "5hrs" },
-        7: { price: "P15.00", time: "12hrs" },
-        8: { price: "P20.00", time: "24hrs" }
+        5: { price: "10.00", time: "4 hours", class: "p10" },
+        7: { price: "15.00", time: "12 hours", class: "p15" },
+        8: { price: "20.00", time: "24 hours", class: "p20" },
+        9: { price: "50.00", time: "4 days", class: "p50" }
     };
 
-    return pricingTable[len] || { price: "INVALID", time: "" };
+    return pricingTable[len] || { price: "INVALID", time: "", class: "invalid" };
 }
 
-// REF GENERATOR
-function generateRef() {
-    const now = new Date();
-    return "REF-" +
-        now.getFullYear().toString().slice(-2) +
-        (now.getMonth()+1).toString().padStart(2,"0") +
-        now.getDate().toString().padStart(2,"0") +
-        "-" +
-        Math.floor(Math.random()*1000);
-}
-
-// LOAD + GENERATE
+// LOAD
 function loadCodes() {
     const raw = document.getElementById("inputCodes").value;
 
-    let codes = raw.match(/\b\d{6,8}\b/g) || [];
-
-    // 🔥 LIMIT TO EXACTLY 50
+    let codes = raw.match(/\b\d{5,9}\b/g) || [];
     codes = codes.slice(0, 50);
 
-    const ref = generateRef();
     const container = document.getElementById("hotspot-print-grid");
     container.innerHTML = "";
 
     codes.forEach((code, i) => {
-        const details = getVoucherDetails(code);
+        const d = getVoucherDetails(code);
 
         const div = document.createElement("div");
         div.className = "voucher";
 
         div.innerHTML = `
-            <div class="ref">${ref}</div>
-
-            <div>
-                <div class="code">${code}</div>
-                <div class="price">${details.price} ${details.time ? "for " + details.time : ""}</div>
+            <div class="logo">
+                <img src="logo.png">
             </div>
 
+            <div class="code">${code}</div>
+
+            <div class="price ${d.class}">${d.price}</div>
+            <div class="time">${d.time}</div>
+
+            <div class="scan">scan me</div>
+
             <div class="qr" id="qr${i}"></div>
+
+            <div class="line"></div>
         `;
 
         container.appendChild(div);
 
         new QRCode(document.getElementById("qr"+i), {
-            text: serverURL + "?code=" + code + "&ref=" + ref,
-            width: 60,
-            height: 60
+            text: serverURL + "?code=" + code,
+            width: 80,
+            height: 80
         });
     });
 
-    alert("✅ Ready: " + codes.length + " vouchers (max 50)");
+    alert("✅ " + codes.length + " vouchers ready");
 }
 
 // SAVE IMAGE
 function saveAsImage() {
-    const element = document.getElementById("hotspot-print-grid");
-
-    html2canvas(element, { scale: 2 }).then(canvas => {
+    html2canvas(document.getElementById("hotspot-print-grid"), { scale: 2 })
+    .then(canvas => {
         const link = document.createElement("a");
         link.download = "vouchers.png";
         link.href = canvas.toDataURL();
