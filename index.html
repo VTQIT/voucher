@@ -1,3 +1,4 @@
+''KAPTEN/LYCEL VOUCHER CODE''
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,12 +26,12 @@ textarea {
     margin-bottom: 10px;
 }
 
-/* GRID */
+/* SCREEN VIEW (preview only) */
 #hotspot-print-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px; /* 🔥 spacing between vouchers */
-    padding: 5px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    padding: 10px;
 }
 
 /* VOUCHER */
@@ -38,14 +39,14 @@ textarea {
     border: 1px solid #000;
     text-align: center;
     padding: 6px 4px;
-    height: 150px;
+    height: 160px;
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* 🔥 evenly spaced content */
+    justify-content: space-between;
 }
 
-/* REF NUMBER */
+/* REF */
 .ref {
     position: absolute;
     top: 3px;
@@ -56,19 +57,17 @@ textarea {
 
 /* CODE */
 .code {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
     margin-top: 8px;
-    margin-bottom: 2px;
 }
 
-/* 🔥 PRICE (HIGHLIGHTED + SPACED) */
+/* PRICE */
 .price {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
     margin: 4px auto;
-    display: inline-block;
-    padding: 2px 8px;
+    padding: 2px 6px;
     border: 2px solid #000;
     border-radius: 6px;
     background: #000;
@@ -79,17 +78,48 @@ textarea {
 .qr {
     display: flex;
     justify-content: center;
-    margin-top: 4px;
 }
 
-/* PRINT CLEAN */
+/* 🔥 PRINT PERFECT 50 (5x10) */
 @media print {
-    .controls {
-        display: none;
-    }
-
     body {
         margin: 0;
+    }
+
+    #hotspot-print-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(10, 1fr);
+        width: 8.5in;
+        height: 11in;
+        gap: 0;
+    }
+
+    .voucher {
+        width: 100%;
+        height: 100%;
+        border: 1px solid #000;
+        padding: 4px;
+        box-sizing: border-box;
+        font-size: 10px;
+    }
+
+    .code {
+        font-size: 14px;
+    }
+
+    .price {
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+
+    .qr canvas {
+        width: 50px !important;
+        height: 50px !important;
+    }
+
+    .controls {
+        display: none;
     }
 }
 </style>
@@ -98,7 +128,7 @@ textarea {
 <body>
 
 <div class="controls">
-    <textarea id="inputCodes" rows="6" placeholder="Paste ANY voucher text here... (messy text allowed)"></textarea>
+    <textarea id="inputCodes" rows="6" placeholder="Paste ANY voucher text here..."></textarea>
 
     <button onclick="loadCodes()">Generate Vouchers</button>
     <button onclick="saveAsImage()">Save as Image</button>
@@ -108,25 +138,23 @@ textarea {
 <div id="hotspot-print-grid"></div>
 
 <script>
-// 🔥 YOUR SERVER
+// SERVER
 const serverURL = "http://10.1.0.100";
 
-// 🔥 AUTO DETECT PRICE + TIME
+// 🔥 AUTO PRICE BY DIGIT LENGTH
 function getVoucherDetails(code) {
     const len = code.length;
 
-    if (len === 6) {
-        return { price: "P10.00", time: "5hrs" };
-    } else if (len === 7) {
-        return { price: "P15.00", time: "12hrs" };
-    } else if (len === 8) {
-        return { price: "P20.00", time: "24hrs" };
-    } else {
-        return { price: "INVALID", time: "" };
-    }
+    const pricingTable = {
+        6: { price: "P10.00", time: "5hrs" },
+        7: { price: "P15.00", time: "12hrs" },
+        8: { price: "P20.00", time: "24hrs" }
+    };
+
+    return pricingTable[len] || { price: "INVALID", time: "" };
 }
 
-// 🔥 GENERATE BATCH REFERENCE
+// REF GENERATOR
 function generateRef() {
     const now = new Date();
     return "REF-" +
@@ -137,15 +165,16 @@ function generateRef() {
         Math.floor(Math.random()*1000);
 }
 
-// 🔥 LOAD + CLEAN + GENERATE
+// LOAD + GENERATE
 function loadCodes() {
     const raw = document.getElementById("inputCodes").value;
 
-    // ✅ EXTRACT ONLY VALID CODES (6–8 digits)
-    const codes = raw.match(/\b\d{6,8}\b/g) || [];
+    let codes = raw.match(/\b\d{6,8}\b/g) || [];
+
+    // 🔥 LIMIT TO EXACTLY 50
+    codes = codes.slice(0, 50);
 
     const ref = generateRef();
-
     const container = document.getElementById("hotspot-print-grid");
     container.innerHTML = "";
 
@@ -168,25 +197,21 @@ function loadCodes() {
 
         container.appendChild(div);
 
-        // QR with tracking
         new QRCode(document.getElementById("qr"+i), {
             text: serverURL + "?code=" + code + "&ref=" + ref,
-            width: 80,
-            height: 80
+            width: 60,
+            height: 60
         });
     });
 
-    // 🔥 FEEDBACK
-    alert("✅ Loaded " + codes.length + " valid vouchers");
+    alert("✅ Ready: " + codes.length + " vouchers (max 50)");
 }
 
-// 🔥 SAVE AS IMAGE
+// SAVE IMAGE
 function saveAsImage() {
     const element = document.getElementById("hotspot-print-grid");
 
-    html2canvas(element, {
-        scale: 2
-    }).then(canvas => {
+    html2canvas(element, { scale: 2 }).then(canvas => {
         const link = document.createElement("a");
         link.download = "vouchers.png";
         link.href = canvas.toDataURL();
@@ -197,3 +222,4 @@ function saveAsImage() {
 
 </body>
 </html>
+```
